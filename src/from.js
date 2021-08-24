@@ -46,7 +46,7 @@ module.exports = class From {
           if (currentProperty.minLength) {
             this.lines.push(
               `  Else;`,
-              `    // ${structName}.${name} requires at least ${currentProperty.minLength} characters.`,
+              `    jl('${structName}.${name} requires at least ${currentProperty.minLength} characters');`,
               `  Endif;`
             );
           }
@@ -66,7 +66,7 @@ module.exports = class From {
           if (currentProperty.minimum !== undefined && currentProperty.maximum) {
             this.lines.push(
               `  Else;`,
-              `    // ${structName}.${name} is not in the range of ${currentProperty.minimum}-${currentProperty.maximum}.`,
+              `    jl('${structName}.${name} is not in the range of ${currentProperty.minimum}-${currentProperty.maximum}');`,
               `  Endif;`
             );
           }

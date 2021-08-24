@@ -37,7 +37,12 @@ module.exports = class Generator {
             ``,
             `/include './headers/headers.rpgle'`,
             `/include './headers/JSONPARSER.rpgle'`,
-            ``
+            ``,
+            `dcl-pr writeJobLog int(10) extproc('Qp0zLprintf');`,
+            `  *n pointer value options(*string); // logMsg`,
+            `  *n pointer value options(*string:*nopass);`,
+            `end-pr;`,
+            ``,
         );
         
         // Custom headers here for all requests
@@ -378,6 +383,15 @@ module.exports = class Generator {
         }
         
         this.baseLines.push(
+            `//*****************************`,
+            ``,
+            `Dcl-Proc jl;`,
+            `  Dcl-Pi jl;`,
+            `    text varchar(200) const;`,
+            `  End-pi;`,
+            `  dcl-c joblogCRLF const(x'0d25');`,
+            `  writeJobLog(text+'%s':joblogCRLF)`,
+            `End-Proc;`,
             ``,
             `//*****************************`,
             ...this.endLines
