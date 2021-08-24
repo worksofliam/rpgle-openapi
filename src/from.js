@@ -39,18 +39,39 @@ module.exports = class From {
       currentProperty = object.properties[name];
   
       switch (currentProperty.type) {
-        case 'number':
         case 'string':
-        case 'integer':
-          if (currentProperty.nullable) {
+          if (currentProperty.nullable) this.lines.push(`  If (${structName}.${name} <> ${nullWhen[currentProperty.type]}); //Optional`);
+          if (currentProperty.minLength) this.lines.push(`  If (%Len(${structName}.${name}) >= ${currentProperty.minLength});`);
+          this.lines.push(`  JSON_${setTypes[currentProperty.type]}(${variable}:'${name}':${structName}.${name});`);
+          if (currentProperty.minLength) {
             this.lines.push(
-              `  If (${structName}.${name} <> ${nullWhen[currentProperty.type]});`,
-              `    JSON_${setTypes[currentProperty.type]}(${variable}:'${name}':${structName}.${name});`,
+              `  Else;`,
+              `    // ${structName}.${name} requires at least ${currentProperty.minLength} characters.`,
               `  Endif;`
             );
-          } else {
-            this.lines.push(`  JSON_${setTypes[currentProperty.type]}(${variable}:'${name}':${structName}.${name});`);
           }
+          if (currentProperty.nullable) this.lines.push(`  Endif;`);
+
+          break;
+
+        case 'number':
+        case 'integer':
+          if (currentProperty.nullable) this.lines.push(`  If (${structName}.${name} <> ${nullWhen[currentProperty.type]}); //Optional`);
+
+          if (currentProperty.minimum !== undefined && currentProperty.maximum) 
+            this.lines.push(`  If (${structName}.${name} >= ${currentProperty.minimum} AND ${structName}.${name} <= ${currentProperty.maximum});`);
+
+          this.lines.push(`    JSON_${setTypes[currentProperty.type]}(${variable}:'${name}':${structName}.${name});`);
+
+          if (currentProperty.minimum !== undefined && currentProperty.maximum) {
+            this.lines.push(
+              `  Else;`,
+              `    // ${structName}.${name} is not in the range of ${currentProperty.minimum}-${currentProperty.maximum}.`,
+              `  Endif;`
+            );
+          }
+
+          if (currentProperty.nullable) this.lines.push(`  Endif;`);
           break;
 
         case `boolean`:

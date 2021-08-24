@@ -24,10 +24,21 @@ module.exports = class Structs {
         for (const name in object.properties) {
           currentProperty = object.properties[name];
       
-          if (currentProperty.description) currentStruct.push(`  //@ ${currentProperty.description}`);
+          currentStruct.push(`  //@ ${currentProperty.description || ''} ${currentProperty.nullable ? '(optional)' : ''}`);
+          if (currentProperty.minLength && currentProperty.maxLength) {
+            if (currentProperty.minLength === currentProperty.maxLength) {
+              currentStruct.push(`  //@ Requires exactly ${currentProperty.maxLength} characters`);
+            } else {
+              currentStruct.push(`  //@ Length range: ${currentProperty.minLength} <=> ${currentProperty.maxLength}.`);
+            }
+          }
+          if (currentProperty.minimum !== undefined && currentProperty.maximum) {
+            currentStruct.push(`  //@ Numeric range: ${currentProperty.minimum} <=> ${currentProperty.maximum}.`);
+          }
           switch (currentProperty.type) {
             case 'string':
-              currentStruct.push(`  ${name} Varchar(${currentProperty.maxLength || 64})${currentProperty.default ? ` Inz('${currentProperty.default}')` : ``};`);
+              if (!currentProperty.default) currentProperty.default = ``;
+              currentStruct.push(`  ${name} Varchar(${currentProperty.maxLength || 64}) Inz('${currentProperty.default}');`);
               break;
 
             case 'boolean':
@@ -36,6 +47,7 @@ module.exports = class Structs {
 
             case 'number':
             case 'integer':
+              if (!currentProperty.default) currentProperty.default = `0`;
               currentStruct.push(`  ${name} ${types[currentProperty.type]}${currentProperty.default ? ` Inz(${currentProperty.default})` : ``};`);
               break;
       
@@ -45,7 +57,7 @@ module.exports = class Structs {
               break;
       
             case 'array':
-              currentStruct.push(`  ${name}_len Uns(5);`);
+              currentStruct.push(`  ${name}_len Uns(5) Inz(0);`);
               if (currentProperty.items.type === "object") {
                 this.generateStruct(currentProperty.items, `${structName}_${name}`);
                 currentStruct.push(`  ${name} LikeDS(${structName}_${name}_t) Dim(100);`);
