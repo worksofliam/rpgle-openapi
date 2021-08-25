@@ -390,7 +390,7 @@ module.exports = class Generator {
             `    text varchar(200) const;`,
             `  End-pi;`,
             `  dcl-c joblogCRLF const(x'0d25');`,
-            `  writeJobLog(text+'%s':joblogCRLF)`,
+            `  writeJobLog(text+'%s':joblogCRLF);`,
             `End-Proc;`,
             ``,
             `//*****************************`,
