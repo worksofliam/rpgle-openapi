@@ -2,7 +2,8 @@
 //Used to convert a structure to a noxdb schema
 
 module.exports = class From {
-  constructor() {
+  constructor(considerNulls = true) {
+    this.considerNulls = considerNulls;
     this.lines = [];
   };
 
@@ -40,9 +41,9 @@ module.exports = class From {
   
       switch (currentProperty.type) {
         case 'string':
-          if (currentProperty.nullable) this.lines.push(`  If (${structName}.${name} <> ${nullWhen[currentProperty.type]}); //Optional`);
+          if (currentProperty.nullable && this.considerNulls) this.lines.push(`  If (${structName}.${name} <> ${nullWhen[currentProperty.type]}); //Optional`);
           if (currentProperty.minLength) this.lines.push(`  If (%Len(${structName}.${name}) >= ${currentProperty.minLength});`);
-          this.lines.push(`  JSON_${setTypes[currentProperty.type]}(${variable}:'${name}':${structName}.${name});`);
+          this.lines.push(`    JSON_${setTypes[currentProperty.type]}(${variable}:'${name}':${structName}.${name});`);
           if (currentProperty.minLength) {
             this.lines.push(
               `  Else;`,
@@ -50,13 +51,13 @@ module.exports = class From {
               `  Endif;`
             );
           }
-          if (currentProperty.nullable) this.lines.push(`  Endif;`);
+          if (currentProperty.nullable && this.considerNulls) this.lines.push(`  Endif;`);
 
           break;
 
         case 'number':
         case 'integer':
-          if (currentProperty.nullable) this.lines.push(`  If (${structName}.${name} <> ${nullWhen[currentProperty.type]}); //Optional`);
+          if (currentProperty.nullable && this.considerNulls) this.lines.push(`  If (${structName}.${name} <> ${nullWhen[currentProperty.type]}); //Optional`);
 
           if (currentProperty.minimum !== undefined && currentProperty.maximum) 
             this.lines.push(`  If (${structName}.${name} >= ${currentProperty.minimum} AND ${structName}.${name} <= ${currentProperty.maximum});`);
@@ -71,11 +72,11 @@ module.exports = class From {
             );
           }
 
-          if (currentProperty.nullable) this.lines.push(`  Endif;`);
+          if (currentProperty.nullable && this.considerNulls) this.lines.push(`  Endif;`);
           break;
 
         case `boolean`:
-          this.lines.push(`  JSON_${setTypes[currentProperty.type]}(${variable}:'${name}':${structName}.${name});`);
+          this.lines.push(`    JSON_${setTypes[currentProperty.type]}(${variable}:'${name}':${structName}.${name});`);
           break;
   
         case 'object':

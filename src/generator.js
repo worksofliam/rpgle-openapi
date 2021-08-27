@@ -7,12 +7,18 @@ const From = require(`./from`);
 const Ref = require(`./ref`);
 
 module.exports = class Generator {
-    constructor(spec) {
+    /**
+     * @param {object} spec
+     * @param {{considerNulls?: boolean}} options
+     */
+    constructor(spec, options) {
         this.spec = spec;
         this.headerFile = [`**FREE`, ``];
         this.prototypes = [``];
         this.baseLines = [`**FREE`, ``];
         this.endLines = [``];
+
+        this.considerNulls = (options.considerNulls === true);
 
         Ref.resolve(spec);
     }
@@ -195,7 +201,7 @@ module.exports = class Generator {
                             inStruct.generateStruct(requestBody, inDs);
                             this.headerFile.push(...inStruct.lines);
         
-                            const dsToJsonProc = new From();
+                            const dsToJsonProc = new From(this.considerNulls);
                             dsToJsonProc.generateProcedure(requestBody, `${inDs}`);
                             this.endLines.push(...dsToJsonProc.lines);
                         }
@@ -278,9 +284,9 @@ module.exports = class Generator {
                             this.prototypes.push(`  //@ default of '${param.default}'`);
                         }
         
-                        if (param.nullable) {
-                            this.baseLines.push(`    //@ Optional. Pass ${param.type ? 'blank' : '-999'} to be ignored.`);
-                            this.prototypes.push(`  //@ Optional. Pass ${param.type ? 'blank' : '-999'} to be ignored.`);
+                        if (param.nullable && this.considerNulls) {
+                            this.baseLines.push(`    //@ Optional. Pass ${param.type ? 'blank' : '0'} to be ignored.`);
+                            this.prototypes.push(`  //@ Optional. Pass ${param.type ? 'blank' : '0'} to be ignored.`);
                         }
         
                         switch (param.type) {
@@ -336,7 +342,7 @@ module.exports = class Generator {
                                 break;
                         }
         
-                        if (parm.nullable) {
+                        if (parm.nullable && this.considerNulls) {
                             this.baseLines.push(
                                 `  // ${parm.name} is optional.`,
                                 `  if (${parm.name} <> ${parm.type === `string` ? `*BLANK` : `-999`});`,
