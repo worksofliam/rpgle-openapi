@@ -356,6 +356,12 @@ module.exports = class Generator {
         
                     for (const parm of queries) {
                         let parmExpr = parm.name;
+                        let notEqual = {
+                            'integer': '-999',
+                            'number': '-999',
+                            'boolean': '*BLANK',
+                            'string': '*BLANK',
+                        }
         
                         switch (parm.type) {
                             case `integer`:
@@ -364,18 +370,18 @@ module.exports = class Generator {
                                 break;
                         }
         
-                        if (parm.nullable && this.considerNulls) {
+                        if (parm.required) {
                             this.baseLines.push(
-                                `  // ${parm.name} is optional.`,
-                                `  if (${parm.name} <> ${parm.type === `string` ? `*BLANK` : `-999`});`,
-                                `    endpoint = endpoint + '${parm.name}=' + ${parmExpr} + '&';`,
-                                `  endif;`,
+                                `  // ${parm.name} is not optional.`,
+                                `  endpoint = endpoint + '${parm.name}=' + ${parmExpr} + '&';`,
                                 ``
                             );
                         } else {
                             this.baseLines.push(
-                                `  // ${parm.name} is not optional.`,
-                                `  endpoint = endpoint + '${parm.name}=' + ${parmExpr} + '&';`,
+                                `  // ${parm.name} is optional.`,
+                                `  if (${parm.name} <> ${notEqual[parm.type]});`,
+                                `    endpoint = endpoint + '${parm.name}=' + ${parmExpr} + '&';`,
+                                `  endif;`,
                                 ``
                             );
                         }
