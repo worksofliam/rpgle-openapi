@@ -191,10 +191,14 @@ module.exports = class Generator {
                     const inDs = `${route.operationId}_req`
                     const outDs = `${route.operationId}_res`;
         
-                    let hasReqBody = route.requestBody;
+                    let reqBody = route.requestBody;
         
-                    if (route.requestBody) {
-                        const requestBody = route.requestBody.content['application/json'].schema;
+                    //Db2 HTTP functions can't handle anything other than successful
+                    const responses = Object.keys(route.responses);
+                    let resBody = route.responses[responses.find(resp => resp.startsWith("2"))].content;
+        
+                    if (reqBody) {
+                        const requestBody = reqBody.content['application/json'].schema;
                         if (requestBody) {
                             //TODO: structs go into a separate file
                             const inStruct = new Structs();
@@ -207,23 +211,24 @@ module.exports = class Generator {
                         }
                     }
         
-                    //Db2 HTTP functions can't handle anything other than successful
-                    const responses = Object.keys(route.responses);
-                    let resBody = route.responses[responses.find(resp => resp.startsWith("2"))].content;
-        
                     if (resBody) {
-                        const responseBody = resBody['application/json'].schema;
-        
-                        const outStruct = new Structs();
-                        outStruct.generateStruct(responseBody, outDs);
-        
-                        const jsonToDsProc = new Into();
-                        jsonToDsProc.generateProcedure(responseBody, `${outDs}`);
-        
-                        //TODO: move into own file
-                        this.headerFile.push(...outStruct.lines);
-        
-                        this.endLines.push(...jsonToDsProc.lines);
+                        if (resBody['application/json']) {
+                            const responseBody = resBody['application/json'].schema;
+            
+                            const outStruct = new Structs();
+                            outStruct.generateStruct(responseBody, outDs);
+            
+                            const jsonToDsProc = new Into();
+                            jsonToDsProc.generateProcedure(responseBody, `${outDs}`);
+            
+                            //TODO: move into own file
+                            this.headerFile.push(...outStruct.lines);
+            
+                            this.endLines.push(...jsonToDsProc.lines);
+                        } else {
+                            console.log(`${method} ${path} not supported due to lack of JSON response.`);
+                            continue;
+                        }
                     }
         
                     let queries = [];
@@ -275,8 +280,8 @@ module.exports = class Generator {
         
                     for (const param of queries) {
                         if (param.description) {
-                            this.baseLines.push(`    //@ ${param.description}`);
-                            this.prototypes.push(`  //@ ${param.description}`);
+                            this.baseLines.push(`    //@ ${param.description.split(`\n`).join(` `)}`);
+                            this.prototypes.push(`  //@ ${param.description.split(`\n`).join(` `)}`);
                         }
         
                         if (param.default) {
@@ -284,10 +289,27 @@ module.exports = class Generator {
                             this.prototypes.push(`  //@ default of '${param.default}'`);
                         }
         
-                        if (param.nullable && this.considerNulls) {
-                            this.baseLines.push(`    //@ Optional. Pass ${param.type ? 'blank' : '0'} to be ignored.`);
-                            this.prototypes.push(`  //@ Optional. Pass ${param.type ? 'blank' : '0'} to be ignored.`);
+                        if (param.required) {
+                            this.baseLines.push(`    //@ Required.`);
+                            this.prototypes.push(`    //@ Required.`);
+                        } else {
+                            this.baseLines.push(`    //@ Optional. Pass ${param.type ? 'blank' : '-999'} to be ignored.`);
+                            this.prototypes.push(`    //@ Optional. Pass ${param.type ? 'blank' : '-999'} to be ignored.`);
                         }
+
+                        if (param.minLength && param.maxLength) {
+                            if (param.minLength === param.maxLength) {
+                                this.baseLines.push(`    //@ Requires exactly ${param.maxLength} characters`);
+                                this.prototypes.push(`    //@ Requires exactly ${param.maxLength} characters`);
+                            } else {
+                                this.baseLines.push(`    //@ Length range: ${param.minLength} <=> ${param.maxLength}.`);
+                                this.prototypes.push(`    //@ Length range: ${param.minLength} <=> ${param.maxLength}.`);
+                            }
+                          }
+                          if (param.minimum !== undefined && param.maximum) {
+                            this.baseLines.push(`    //@ Numeric range: ${param.minimum} <=> ${param.maximum}.`);
+                            this.prototypes.push(`    //@ Numeric range: ${param.minimum} <=> ${param.maximum}.`);
+                          }
         
                         switch (param.type) {
                             case `integer`:
@@ -306,7 +328,7 @@ module.exports = class Generator {
                         }
                     }
         
-                    if (hasReqBody) {
+                    if (reqBody) {
                         this.baseLines.push(`    //@ Request body`);
                         this.baseLines.push(`    body LikeDS(${inDs}_t);`);
                         this.prototypes.push(`  //@ Request body`);
@@ -317,7 +339,7 @@ module.exports = class Generator {
                     this.prototypes.push(`End-Pr;`, ``);
         
                     this.baseLines.push(`  Dcl-S endpoint Varchar(256);`);
-                    if (hasReqBody) this.baseLines.push(`  Dcl-S jsonBody Pointer;`);
+                    if (reqBody) this.baseLines.push(`  Dcl-S jsonBody Pointer;`);
                     else this.baseLines.push(`  Dcl-S jsonBody Pointer; //Always null`);
                     if (resBody) {
                         this.baseLines.push(
@@ -359,7 +381,7 @@ module.exports = class Generator {
                         }
                     }
         
-                    if (hasReqBody) {
+                    if (reqBody) {
                         this.baseLines.push(
                             `  jsonBody = ${inDs}(body);`,
                             ``,

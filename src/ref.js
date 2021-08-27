@@ -5,7 +5,7 @@ exports.resolve = (totalBase, base) => {
     if (!base) base = totalBase;
 
     for (const key in base) {
-        if (typeof base[key] === `object`) {
+        if (base[key] && typeof base[key] === `object`) {
             if (base[key][`$ref`]) {
                 base[key] = exports.parse(totalBase, base[key]);
             }

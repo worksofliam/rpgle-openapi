@@ -22,7 +22,7 @@ module.exports = class Into {
     const getTypes = {
       'number': `GetNum`,
       'string': 'GetStr',
-      'boolean': 'GetInd',
+      'boolean': 'isTrue',
       'integer': 'GetInt'
     };
   

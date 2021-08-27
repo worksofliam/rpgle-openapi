@@ -24,7 +24,7 @@ module.exports = class Structs {
         for (const name in object.properties) {
           currentProperty = object.properties[name];
       
-          currentStruct.push(`  //@ ${currentProperty.description || ''} ${currentProperty.nullable ? '(optional)' : ''}`);
+          currentStruct.push(`  //@ ${currentProperty.nullable ? 'optional:' : 'required:'} ${currentProperty.description ? currentProperty.description.split(`\n`).join(` `) : ''}`);
           if (currentProperty.minLength && currentProperty.maxLength) {
             if (currentProperty.minLength === currentProperty.maxLength) {
               currentStruct.push(`  //@ Requires exactly ${currentProperty.maxLength} characters`);
@@ -35,6 +35,7 @@ module.exports = class Structs {
           if (currentProperty.minimum !== undefined && currentProperty.maximum) {
             currentStruct.push(`  //@ Numeric range: ${currentProperty.minimum} <=> ${currentProperty.maximum}.`);
           }
+          
           switch (currentProperty.type) {
             case 'string':
               if (!currentProperty.default) currentProperty.default = ``;
@@ -61,8 +62,20 @@ module.exports = class Structs {
               if (currentProperty.items.type === "object") {
                 this.generateStruct(currentProperty.items, `${structName}_${name}`);
                 currentStruct.push(`  ${name} LikeDS(${structName}_${name}_t) Dim(100);`);
+
               } else {
-                currentStruct.push(`  ${name} ${types[currentProperty.items.type]} Dim(100);`);
+                switch (currentProperty.items.type) {
+                  case 'string':
+                    if (!currentProperty.items.default) currentProperty.items.default = ``;
+                    currentStruct.push(`  ${name} Varchar(${currentProperty.items.maxLength || 64}) Inz('${currentProperty.items.default}') Dim(100);`);
+                    break;
+
+                  case 'integer':
+                  case 'number':
+                    if (!currentProperty.items.default) currentProperty.items.default = `0`;
+                    currentStruct.push(`  ${name} ${types[currentProperty.items.type]}${currentProperty.items.default ? ` Inz(${currentProperty.items.default})` : ``} Dim(100);`);
+                    break;
+                }
               }
               break;
 
