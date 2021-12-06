@@ -274,8 +274,8 @@ module.exports = class Generator {
                     );
         
                     for (const param of paramaters) {
-                        this.baseLines.push(`    ${param} Varchar(32);`);
-                        this.prototypes.push(`  ${param} Varchar(32);`);
+                        this.baseLines.push(`    ${param} Varchar(64);`);
+                        this.prototypes.push(`  ${param} Varchar(64);`);
                     }
         
                     for (const param of queries) {
