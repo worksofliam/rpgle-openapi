@@ -9,7 +9,7 @@ const Ref = require(`./ref`);
 module.exports = class Generator {
     /**
      * @param {object} spec
-     * @param {{considerNulls?: boolean}} options
+     * @param {{considerNulls?: boolean, stringLength?: number}} options
      */
     constructor(spec, options) {
         this.spec = spec;
@@ -18,6 +18,7 @@ module.exports = class Generator {
         this.baseLines = [`**FREE`, ``];
         this.endLines = [``];
 
+        this.stringLength = options.stringLength || 64;
         this.considerNulls = (options.considerNulls === true);
 
         Ref.resolve(spec);
@@ -47,6 +48,10 @@ module.exports = class Generator {
             `dcl-pr writeJobLog int(10) extproc('Qp0zLprintf');`,
             `  *n pointer value options(*string); // logMsg`,
             `  *n pointer value options(*string:*nopass);`,
+            `end-pr;`,
+            ``,
+            `dcl-pr getenv pointer extproc('getenv');`,
+            `  *n pointer value options(*string:*trim);`,
             `end-pr;`,
             ``,
         );
@@ -105,7 +110,8 @@ module.exports = class Generator {
             `    Body   Varchar(2048);`,
             `  End-Ds;`,
             ``,
-            `  Dcl-S Response SQLTYPE(CLOB:100000);`,
+            `  Dcl-S Response     SQLTYPE(CLOB:100000);`,
+            `  Dcl-S ResponseJson Pointer;`,
             ``,
             `  request.URL = info.baseUrl + endpoint;`,
             ``,
@@ -166,7 +172,18 @@ module.exports = class Generator {
             ``,
             `  json_Close(body);`,
             ``,
-            `  Return json_ParseString(%Subst(Response_Data:1:Response_Len));`,
+            `  If (Response_Len > 0);`,
+            `    ResponseJson = json_ParseString(%Subst(Response_Data:1:Response_Len));`,
+            ``,
+            `    If (getenv('DEBUG_API') <> *null);`,
+            `      json_writeJsonStmf(ResponseJson:'/tmp/json-' + %Char(%Timestamp):1208);`,
+            `    Endif;`,
+            ``,
+            `    Return ResponseJson;`,
+            `  Else;`,
+            `    jl('Call to API has no response: ' + request.URL);`,
+            `    Return *null;`,
+            `  Endif;`,
             `End-Proc;`,
             ``,
             `//@ Used to determine errors in API calls`,
@@ -274,8 +291,8 @@ module.exports = class Generator {
                     );
         
                     for (const param of paramaters) {
-                        this.baseLines.push(`    ${param} Varchar(64);`);
-                        this.prototypes.push(`  ${param} Varchar(64);`);
+                        this.baseLines.push(`    ${param} Varchar(${this.stringLength});`);
+                        this.prototypes.push(`  ${param} Varchar(${this.stringLength});`);
                     }
         
                     for (const param of queries) {
